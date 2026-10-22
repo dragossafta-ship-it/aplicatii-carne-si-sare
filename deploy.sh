@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verificare (doar citire): nu modifica nimic pe server, scrie un raport temporar.
+# Verificare v2 (doar citire): nu modifica nimic pe server, scrie un raport temporar.
 set +e
 OUT=/tmp/diag-3938fa6768588173.txt
 {
@@ -14,8 +14,15 @@ echo "--- node/python"; node -v 2>&1; python3 --version 2>&1
 echo "--- nginx locatii"; nginx -T 2>/dev/null | grep -E '^\s*(server_name|listen|location|root|alias|proxy_pass)\b' | sed 's/^\s*//' | head -80
 echo "--- /opt"; ls -la /opt 2>&1
 echo "--- /var/www"; ls -la /var/www 2>&1
+echo "--- unde e gestiune"; find / -xdev -path "*/gestiune/m/registru/registru.html" -not -path "/proc/*" 2>/dev/null | head -3
+echo "--- procese node"; for p in $(pgrep -f node); do echo "$p $(readlink /proc/$p/cwd) $(tr "\0" " " < /proc/$p/cmdline | cut -c1-120)"; done
 echo "--- cron app-update"; cat /etc/cron.d/app-update 2>&1; cat /opt/app-last-check 2>&1
 } > $OUT 2>&1
+for F in $(find / -xdev -path '*/gestiune/m/registru/registru.html' -not -path '/proc/*' 2>/dev/null | head -3); do
+  D=$(dirname $(dirname $(dirname $(dirname $F))))
+  cp $OUT "$D/gestiune/diag-3938fa6768588173.txt"; chmod 644 "$D/gestiune/diag-3938fa6768588173.txt"
+  cp $OUT "$D/diag-3938fa6768588173.txt"; chmod 644 "$D/diag-3938fa6768588173.txt"
+done
 for R in $(nginx -T 2>/dev/null | grep -E '^\s*(root|alias)\s' | awk '{print $2}' | tr -d ';' | sort -u); do
   [ -d "$R" ] && cp $OUT "$R/diag-3938fa6768588173.txt" && chmod 644 "$R/diag-3938fa6768588173.txt" && echo "scris in $R"
 done
